@@ -1,16 +1,29 @@
-//
-//  SCSoundCloud+Private.m
-//  SoundCloudAPI
-//
-//  Created by Tobias Kräntzer on 19.07.11.
-//  Copyright 2011 Nxtbgthng. All rights reserved.
-//
+/*
+ * Copyright 2010, 2011 nxtbgthng for SoundCloud Ltd.
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ * 
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ *
+ * For more information and documentation refer to
+ * http://soundcloud.com/api
+ * 
+ */
 
 #if TARGET_OS_IPHONE
 #import "NXOAuth2.h"
 #import "SCLoginViewController.h"
 #else
 #import <OAuth2Client/NXOAuth2.h>
+#import <Cocoa/Cocoa.h>
 #endif
 
 #import "SCConstants.h"
@@ -26,30 +39,6 @@
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         shared = [SCSoundCloud new];
-        
-        // Set default handler for prepared authorization urls.
-        
-        [[NXOAuth2AccountStore sharedStore] setPreparedAuthorizationURLHandlerForAccountType:kSCAccountType
-                                                                                       block:^(NSURL *preparedURL){
-                                                                                           NSLog(@"Open prepared URL: %@", preparedURL);
-#if TARGET_OS_IPHONE
-                                                                                           
-                                                                                           SCLoginViewController *loginViewController = [[SCLoginViewController alloc] initWithURL:preparedURL
-                                                                                                                                                                    authentication:nil];
-                                                                                           
-                                                                                           NSArray *windows = [[UIApplication sharedApplication] windows];
-                                                                                           UIWindow *window = nil;
-                                                                                           if (windows.count > 0) window = [windows objectAtIndex:0];
-                                                                                           if ([window respondsToSelector:@selector(rootViewController)]) {
-                                                                                               UIViewController *rootViewController = [window rootViewController];
-                                                                                               [rootViewController presentModalViewController: loginViewController animated:YES];
-                                                                                           } else {
-                                                                                               NSAssert(NO, @"If you're not on iOS4 you need to implement -soundCloudAPIDisplayViewController: or show your own authentication controller in -soundCloudAPIPreparedAuthorizationURL:");
-                                                                                           }
-#else
-                                                                                           [[NSWorkspace sharedWorkspace] openURL:preparedURL];
-#endif
-                                                                                       }];
     });
     return shared;
 }

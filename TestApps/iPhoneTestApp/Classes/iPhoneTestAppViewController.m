@@ -26,10 +26,6 @@
 
 @interface iPhoneTestAppViewController(private)
 -(void)commonAwake;
--(void)updateUserInfoFromData:(NSData *)data;
-
-- (void)updateUserInfo;
-- (void)updateTrackNumber;
 @end
 
 
@@ -52,114 +48,32 @@
 
 - (void)viewDidAppear:(BOOL)animated;
 {   
-    // Enable upload
-    SCAccount *account = appDelegate.scAccount;
-    if (account) {
-        self.postButton.enabled = YES;
-        self.trackNameField.enabled = YES;
-    }
-    
-    [self updateUserInfo];
-    [self updateTrackNumber];
-}
-
-- (void)updateUserInfo;
-{
-    SCAccount *account = appDelegate.scAccount;
-    if (!account) return;
- 
-    // Fetch information about this account.
-    [SCRequest performMethod:@"GET"
-                  onResource:[NSURL URLWithString:@"https://api.soundcloud.com/me.json"]
-             usingParameters:nil
-                 withAccount:account
-      sendingProgressHandler:nil
-             responseHandler:^(NSData *data, NSError *error){
-                 if (data) {
-                     NSError *jsonError = nil;
-                     NSDictionary *result = [NSJSONSerialization JSONObjectWithData:data options:0 error:&jsonError];
-                     if (result) {
-                         self.usernameLabel.text = [result objectForKey:@"username"];
-                     } else {
-                         NSLog(@"me: ??? json error: %@", [jsonError localizedDescription]);
-                     }
-                 } else {
-                     NSLog(@"me: ??? error: %@", [error localizedDescription]);
-                 }
-             }];
-}
-
-- (void)updateTrackNumber;
-{
-    SCAccount *account = appDelegate.scAccount;
-    if (!account) return;
-    
-    // Fetch the tack list to get the numer of tracks of this account.
-    [SCRequest performMethod:@"GET"
-                  onResource:[NSURL URLWithString:@"https://api.soundcloud.com/me/tracks.json"]
-             usingParameters:nil
-                 withAccount:account
-      sendingProgressHandler:nil
-             responseHandler:^(NSData *data, NSError *error){
-                 if (data) {
-                     NSError *jsonError = nil;
-                     NSArray *result = [NSJSONSerialization JSONObjectWithData:data options:0 error:&jsonError];
-                     if (result) {
-                         self.trackNumberLabel.text = [NSString stringWithFormat:@"%d", [result count]];
-                     } else {
-                         NSLog(@"tracks: ??? json error: %@", [jsonError localizedDescription]);
-                     }
-                 } else {
-                     NSLog(@"tracks: ??? error: %@", [error localizedDescription]);
-                 }
-             }];
+    self.postButton.enabled = YES;
 }
 
 #pragma mark Accessors
 
-@synthesize postButton, trackNameField;
-@synthesize progresBar;
-
-@synthesize usernameLabel;
-@synthesize trackNumberLabel;
+@synthesize postButton;
 
 
 #pragma mark Actions
 
 -(IBAction)sendRequest:(id)sender;
 {
-    SCAccount *account = appDelegate.scAccount;
-    if (!account) return;
-    
-        
     NSString *dataPath = [[NSBundle mainBundle] pathForResource:@"1375_sleep_90_bpm_nylon2" ofType:@"wav"];
     NSURL *dataURL = [NSURL fileURLWithPath:dataPath];
     
-    NSMutableDictionary *parameters = [NSMutableDictionary dictionary];
-    [parameters setObject:[trackNameField text] forKey:@"track[title]"];
-    [parameters setObject:@"private" forKey:@"track[sharing]"];
-    [parameters setObject:dataURL forKey:@"track[asset_data]"];
-    
-    self.progresBar.progress = 0.0;
-    
-    [SCRequest performMethod:@"POST"
-                  onResource:[NSURL URLWithString:@"https://api.soundcloud.com/tracks"]
-             usingParameters:parameters withAccount:account
-      sendingProgressHandler:^(unsigned long long bytesSend, unsigned long long bytesTotal){self.progresBar.progress = ((float)bytesSend)/bytesTotal;}
-             responseHandler:^(NSData *data, NSError *error){
-                 if (data) {
-                     self.progresBar.progress = 0.0;
-                     [self updateTrackNumber];
-                 }
-             }];
-
-}
-
-#pragma mark UITextField Delegate
-
-- (BOOL)textFieldShouldReturn:(UITextField *)textField {
-	[textField resignFirstResponder];
-	return NO;
+    SCShareViewController *shareView = [SCShareViewController shareViewControllerWithFileURL:dataURL
+                                                                           completionHandler:^(BOOL canceled, NSDictionary *trackInfo){
+        if (canceled) {
+            NSLog(@"Sharing sound with Soundcloud canceled.");
+        } else {
+            NSLog(@"Uploaded track: %@", trackInfo);
+        }
+        
+        [self dismissModalViewControllerAnimated:YES];
+    }];
+    [self presentModalViewController:shareView animated:YES];
 }
 
 @end
